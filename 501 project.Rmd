@@ -1,0 +1,270 @@
+---
+title: "501 Project"
+author: "Shiyi Yuan"
+date: "12/3/2020"
+output: pdf_document
+---
+
+```{r}
+data = read.csv("/Users/blairyuan/Desktop/forestfires.csv")
+```
+```{r}
+data$month <- as.numeric(as.factor(data$month))
+data$day <- as.numeric(as.factor(data$day))
+```
+```{r}
+data
+```
+
+
+```{r}
+pairs(log(area+1) ~ X + Y + month + day + orderNorm(FFMC) + DMC + DC + log(ISI+1)  + temp + RH + wind + rain  , data = data) 
+```
+
+```{r}
+library(bestNormalize)
+Transy <-bestNormalize(data$rain,allow_orderNorm = FALSE)
+print(Transy)
+```
+```{r}
+print(Transy)
+```
+```{r}
+summary(a1 <- powerTransform(cbind(FFMC+0.01, rain+1, ISI+1) ~ -1, data))
+```
+```{r}
+ml1 <- lm(area+1 ~ X + Y + month + day+ FFMC + DMC + DC + ISI + temp + RH + wind + rain  , data = data)
+summary(ml1)
+plot(ml1)
+```
+residual plots
+```{r}
+stanres <- rstandard(ml1)
+plot(data$X, stanres, ylab = "Standardlized Residuals")
+plot(data$Y, stanres, ylab = "Standardlized Residuals")
+plot(data$day, stanres, ylab = "Standardlized Residuals")
+plot(data$month, stanres, ylab = "Standardlized Residuals")
+plot(data$FFMC, stanres, ylab = "Standardlized Residuals")
+plot(data$DMC, stanres, ylab = "Standardlized Residuals")
+plot(data$DC, stanres, ylab = "Standardlized Residuals")
+plot(data$ISI, stanres, ylab = "Standardlized Residuals")
+plot(data$temp, stanres, ylab = "Standardlized Residuals")
+plot(data$RH, stanres, ylab = "Standardlized Residuals")
+plot(data$wind, stanres, ylab = "Standardlized Residuals")
+plot(data$rain, stanres, ylab = "Standardlized Residuals")
+```
+inverse response plot
+```{r}
+summary(data)
+```
+```{r}
+library(car)
+inverseResponsePlot(ml1)
+```
+```{r}
+library(MASS)
+boxcox(ml1, lambda = seq(0.3, 0.65, length = 20))
+```
+```{r}
+library(car)
+vif(ml2)
+```
+model 2 trying to log rain
+```{r}
+ml2 <- lm(log(area+1) ~ X + Y + day + month + FFMC^3 + DMC + DC + log(ISI+1) + temp + RH + wind   , data = data)
+pairs(log(area+1) ~ X + Y + month + day + FFMC^3+ DMC + DC + log(ISI+1) + temp + RH + wind, data = data)
+plot(ml2)
+vif(ml2)
+```
+model 3 without rain: : 
+```{r}
+data1 <- data[, -which(colnames(data)== "rain")]
+```
+```{r}
+data1$area <- log(data1$area+1)
+data1 <- data1[which(data1$area>0), ]
+ml3 <- lm(area ~ X + Y + day + month + FFMC^3 + DMC +DC + ISI+ temp + RH + wind  , data = data1)
+summary(ml3)
+plot(ml3)
+```
+```{r}
+library(car)
+vif(ml3)
+```
+
+```{r}
+ml3<- lm(log(area+1) ~ X + Y + day + month + FFMC^3 + DMC +DC + log(ISI+1)+ temp + RH + wind  , data = data)
+```
+```{r}
+library(leaps)
+leaps <- regsubsets(log(area+1) ~ X + Y + day + month + FFMC^3 + DMC +DC + log(ISI+1)+ temp + RH + wind  , data = data)
+plot(leaps, scale = "adjr2")
+```
+
+```{r}
+library(leaps)
+plot(leaps, scale = "bic")
+```
+```{r}
+library(leaps)
+plot(leaps, scale = "Cp")
+```
+
+```{r}
+backAIC <- step(ml2, direction = "backward", data1)
+```
+
+```{r}
+backBIC <- step(ml2, directin = "backward", data1, k = log(517))
+```
+
+
+```{r}
+ml4 <- lm(log(area+1) ~ DMC + month + wind +RH + X, data)
+summary(ml4)
+plot(ml4)
+vif(ml4)
+```
+
+Search for outliers: 
+
+```{r}
+influencePlot(ml4,id.n=5)
+```
+```{r}
+data2 <- data1[-which(row.names(data1) %in% c(212, 514, 247, 416))]
+ml5 <- lm(log(area+1)~ISI + DC + DMC + month + wind , data = data2)
+summary(ml5)
+```
+
+model 5: 
+
+```{r}
+ml5 <- lm(log(area+1) ~ ISI + DC + DMC + month + wind, data1)
+summary(ml5)
+vif(ml5)
+plot(ml5)
+```
+```{r}
+tISI <- data$log(ISI+1)
+```
+```{r}
+data$FFMC.DMC <- data$FFMC^3*data$DMC
+data$FFMC.DC <-data$FFMC^3*data$DC
+data$FFMC.ISI <-data$FFMC^3*log(data$ISI+1)
+data$DMC.DC<-data$DMC*data$DC
+data$DMC.ISI<-data$DMC*log(data$ISI+1)
+data$DC.ISI<-data$DC*log(data$ISI+1)
+data$wind.temp<-(data$wind)*(data$temp)
+data$temp.RH<-(data$temp)*(data$RH)
+data$wind.RH<-(data$wind)*(data$RH)
+```
+```{r}
+ml6 <- lm(log(area + 1) ~ X + Y + month + day + FFMC^3+ DMC + DC + log(ISI+1) + temp + RH + wind + FFMC.DMC
+                            + FFMC.DC + FFMC.ISI + DMC.DC +DMC.ISI + DC.ISI + wind.temp + temp.RH + wind.RH, data = data1)
+summary(ml6)
+plot(ml6)
+vif(ml6)
+```
+```{r}
+library(leaps)
+leapsinteract <- regsubsets(log(area+1)~ X + Y + month + day + FFMC^3+ DMC + DC + log(ISI+1) + temp + RH + wind + FFMC.DMC
+                            + FFMC.DC + FFMC.ISI + DMC.DC +DMC.ISI + DC.ISI + wind.temp + temp.RH + wind.RH, data = data1)
+plot(leapsinteract, scale = "adjr2")
+rs <- summary(leapsinteract)
+
+rs$adjr2
+```
+```{r}
+library(leaps)
+plot(leapsinteract, scale = "bic")
+```
+```{r}
+library(leaps)
+plot(leapsinteract, scale = "Cp")
+```
+```{r}
+backAIC <- step(ml6, direction = "backward", data1)
+```
+BIC: 
+```{r}
+backBIC <- step(ml6, direction = "backward", data1, k = log(517))
+```
+model 7: 
+```{r}
+ml7 <- lm(log(area + 1) ~ DMC + DC + month + FFMC.DMC + FFMC.DC, data = data1)
+summary(ml7)
+```
+
+model 8: 
+```{r}
+ml8 <- lm(log(area + 1) ~ DMC + DC + month + FFMC.DMC + FFMC.DC + wind, data = data1)
+summary(ml8)
+```
+model 9: 
+```{r}
+ml9 <- lm(log(area + 1) ~ month + DMC + DC + FFMC.DMC + FFMC.DC, data = data1)
+summary(ml9)
+plot(ml9)
+vif(ml9)
+```
+
+```{r}
+ml10 <- lm(log(area + 1) ~ DMC + DC + month + FFMC.DMC + FFMC.DC + temp, data = data1)
+summary(ml10)
+plot(ml10)
+```
+
+```{r}
+ml10 <- lm(log(area + 1) ~ month + DMC + DC + wind, data = data1)
+summary(ml10)
+plot(ml10)
+vif(ml10)
+```
+```{r}
+ml10 <- lm(log(area + 1) ~ month + DMC + DC + FFMC.DMC + FFMC.DC + temp + wind.temp + temp.RH + DC.ISI, data = data1)
+summary(ml10)
+plot(ml10)
+```
+
+```{r}
+anova(ml9, ml8)
+```
+```{r}
+anova(ml7,ml9)
+```
+
+model6: 
+```{r}
+ml6 <- lm(log(area+1) ~ month + wind, data1)
+summary(ml6)
+```
+
+```{r}
+plot(ml2)
+```
+```{r}
+pairs(log(area+0.01) ~ X + Y + month + day + FFMC + DMC + DC + ISI + temp + RH + wind + rain  , data = data)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
