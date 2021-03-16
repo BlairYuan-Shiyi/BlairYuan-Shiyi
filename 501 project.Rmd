@@ -1,5 +1,5 @@
 ---
-title: "501 Project"
+title: "Forest Fire Prediction Project"
 author: "Shiyi Yuan"
 date: "12/3/2020"
 output: pdf_document
